@@ -10,4 +10,12 @@ export default defineConfig({
       },
     }),
   ],
+  resolve: {
+    alias: {
+      '@mediapipe/face_mesh': '@mediapipe/face_mesh/face_mesh.js',
+      '@mediapipe/hands': '@mediapipe/hands/hands.js',
+      '@mediapipe/drawing_utils': '@mediapipe/drawing_utils/drawing_utils.js',
+      '@mediapipe/camera_utils': '@mediapipe/camera_utils/camera_utils.js',
+    },
+  },
 })

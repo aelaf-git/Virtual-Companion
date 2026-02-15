@@ -3,7 +3,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from dotenv import load_dotenv
-from groq import Groq
+from groq import AsyncGroq
 
 load_dotenv()
 
@@ -17,7 +17,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+client = AsyncGroq(api_key=os.getenv("GROQ_API_KEY"))
 
 # The "Soul" of the AI - System Prompt
 SYSTEM_PROMPT = (
@@ -38,7 +38,7 @@ class ChatRequest(BaseModel):
 async def chat(request: ChatRequest):
     try:
         print(f"Received chat request: {request.message} (mood: {request.mood})")
-        completion = client.chat.completions.create(
+        completion = await client.chat.completions.create(
             model="llama-3.3-70b-versatile",
             messages=[
                 {"role": "system", "content": SYSTEM_PROMPT},
@@ -51,6 +51,7 @@ async def chat(request: ChatRequest):
         print(f"Generated response: {response_text}")
         return {"response": response_text}
     except Exception as e:
+        print(f"Error processing request: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":

@@ -37,6 +37,7 @@ class ChatRequest(BaseModel):
 @app.post("/chat")
 async def chat(request: ChatRequest):
     try:
+        print(f"Received chat request: {request.message} (mood: {request.mood})")
         completion = client.chat.completions.create(
             model="llama-3.3-70b-versatile",
             messages=[
@@ -46,7 +47,9 @@ async def chat(request: ChatRequest):
             temperature=0.8,
             max_tokens=150,
         )
-        return {"response": completion.choices[0].message.content}
+        response_text = completion.choices[0].message.content
+        print(f"Generated response: {response_text}")
+        return {"response": response_text}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

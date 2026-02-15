@@ -60,11 +60,7 @@ const Eyes = ({ mood = "idle" }) => {
         }
       }, 2500);
     } else {
-        // If not idle (thinking, talking, exciting), reset pupil position naturally
-        // But we rely on 'mood' variants for the main animation, so we might need to stop this control?
-        // Actually, if we use 'animate={mood}', it overrides this control?
-        // No, we need to be careful. 'animate' prop takes priority if passed simple values?
-        // We will use specialized controls for idle movements.
+        // If not idle, reset manual control so variants can take over
         pupilControls.stop();
     }
 
@@ -76,9 +72,9 @@ const Eyes = ({ mood = "idle" }) => {
   const pupilVariants = {
     idle: { scale: 1 }, // Position handled by controls
     excited: { 
-      scale: 1.3, 
-      y: [0, -10, 0], 
-      transition: { repeat: Infinity, duration: 0.5 } 
+      scale: 1.1, 
+      y: [0, -10, 0, -5, 0], // Happy bounce
+      transition: { repeat: Infinity, duration: 0.8, ease: "easeInOut" } 
     },
     thinking: { 
       x: [0, 15, -15, 0], 
@@ -101,20 +97,18 @@ const Eyes = ({ mood = "idle" }) => {
   };
 
   return (
-    <div className="face-container">
+    <div className={`face-container ${mood}`}>
       <div className="eye-row">
         {/* Left Eye Socket (Blinking) */}
         <motion.div
-          className="eye-socket"
+          className={`eye-socket ${mood}`}
           animate={blinkControls}
           initial={{ scaleY: 1 }}
         >
           {/* Left Pupil (Movement & Mood) */}
           <motion.div 
-            className="pupil"
+            className={`pupil ${mood}`}
             // We alternate between mood-based animation and random-idle animation
-            // When mood is idle, we use pupilControls (manual x/y).
-            // When mood is NOT idle, we want the Variant to take over.
             animate={mood === "idle" ? pupilControls : mood}
             variants={pupilVariants}
           />
@@ -122,13 +116,13 @@ const Eyes = ({ mood = "idle" }) => {
 
         {/* Right Eye Socket (Blinking) */}
         <motion.div
-          className="eye-socket"
+          className={`eye-socket ${mood}`}
           animate={blinkControls}
           initial={{ scaleY: 1 }}
         >
           {/* Right Pupil (Movement & Mood) */}
           <motion.div 
-            className="pupil"
+            className={`pupil ${mood}`}
             animate={mood === "idle" ? pupilControls : mood}
             variants={pupilVariants}
           />

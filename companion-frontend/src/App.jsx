@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import './App.css';
 import Eyes from './Eyes';
+import GestureManager from './GestureManager';
 
 function App() {
   const [userInput, setUserInput] = useState('');
@@ -8,36 +9,58 @@ function App() {
   const [isLoading, setIsLoading] = useState(false);
   const [mood, setMood] = useState("idle");
 
-  const sendMessage = async () => {
-    if (!userInput.trim()) return;
+  const sendMessage = async (textOverride = null, moodOverride = "happy", imageSrc = null) => {
+    const textToSend = textOverride || userInput;
+    // Allow empty text if we have an image (Vision request)
+    if (!textToSend.trim() && !imageSrc) return;
 
-    const currentMessage = userInput;
-    setUserInput(''); // Clear input immediately
+    if (!textOverride) {
+        setUserInput(''); // Clear input if it's a manual message
+        setMood("thinking");
+    }
+    
     setIsLoading(true);
-    setMood("thinking");
 
     try {
+      const payload = { 
+        message: textToSend,
+        mood: moodOverride 
+      };
+      
+      if (imageSrc) {
+        payload.image_url = imageSrc;
+      }
+
       const response = await fetch("http://localhost:8000/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          message: currentMessage,
-          mood: "happy" // You can make this dynamic later based on analysis
-        }),
+        body: JSON.stringify(payload),
       });
 
       const data = await response.json();
-      setChatHistory(prev => [...prev, { user: currentMessage, ai: data.response }]);
+      
+      const displayMessage = textOverride ? (imageSrc ? "👋 (Wave & Vision)" : "👋 (Waved)") : textToSend;
+      setChatHistory(prev => [...prev, { user: displayMessage, ai: data.response }]);
       
       // Trigger Voice
       speak(data.response);
     } catch (error) {
       console.error("Error connecting to backend:", error);
-      setChatHistory(prev => [...prev, { user: currentMessage, ai: "Error: Could not connect to companion." }]);
+      setChatHistory(prev => [...prev, { user: textToSend, ai: "Error: Could not connect to companion." }]);
       setMood("idle");
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleWave = (imageSrc) => {
+    if (mood === "excited" || isLoading) return; 
+    console.log("Wave detected! Sending vision request...");
+    setMood("excited");
+    
+    // Trigger backend interaction with VISION
+    // We send a generic prompt but include the image
+    sendMessage("Describe what you see! I am waving at you!", "excited", imageSrc);
   };
 
   const speak = (text) => {
@@ -48,7 +71,11 @@ function App() {
     utterance.pitch = 1.5; // High pitch for child voice
     utterance.rate = 1.1;
 
-    utterance.onstart = () => setMood("talking");
+    utterance.onstart = () => {
+        // Keep "excited" mood if we are excited, otherwise talking
+        setMood(prev => prev === "excited" ? "excited" : "talking");
+    };
+    
     utterance.onend = () => setMood("idle");
     utterance.onerror = () => setMood("idle");
 
@@ -60,6 +87,9 @@ function App() {
       <h1>Virtual Companion</h1>
       
       <Eyes mood={mood} />
+      
+      {/* Gesture Manager runs in background and handles Capture */}
+      <GestureManager onWave={handleWave} />
       
       <div className="chat-container">
         {chatHistory.map((msg, index) => (

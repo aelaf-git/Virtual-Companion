@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import './App.css';
+import Eyes from './Eyes';
 
 function App() {
   const [userInput, setUserInput] = useState('');
   const [chatHistory, setChatHistory] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [mood, setMood] = useState("idle");
 
   const sendMessage = async () => {
     if (!userInput.trim()) return;
@@ -12,6 +14,7 @@ function App() {
     const currentMessage = userInput;
     setUserInput(''); // Clear input immediately
     setIsLoading(true);
+    setMood("thinking");
 
     try {
       const response = await fetch("http://localhost:8000/chat", {
@@ -19,7 +22,7 @@ function App() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
           message: currentMessage,
-          mood: "happy" 
+          mood: "happy" // You can make this dynamic later based on analysis
         }),
       });
 
@@ -31,21 +34,33 @@ function App() {
     } catch (error) {
       console.error("Error connecting to backend:", error);
       setChatHistory(prev => [...prev, { user: currentMessage, ai: "Error: Could not connect to companion." }]);
+      setMood("idle");
     } finally {
       setIsLoading(false);
     }
   };
 
   const speak = (text) => {
+    // Cancel any previous speech
+    window.speechSynthesis.cancel();
+
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.pitch = 1.5; // High pitch for child voice
     utterance.rate = 1.1;
+
+    utterance.onstart = () => setMood("talking");
+    utterance.onend = () => setMood("idle");
+    utterance.onerror = () => setMood("idle");
+
     window.speechSynthesis.speak(utterance);
   };
 
   return (
     <div className="app-container">
       <h1>Virtual Companion</h1>
+      
+      <Eyes mood={mood} />
+      
       <div className="chat-container">
         {chatHistory.map((msg, index) => (
           <div key={index} className="message-pair">

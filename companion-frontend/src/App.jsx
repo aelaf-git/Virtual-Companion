@@ -16,9 +16,9 @@ function App() {
 
     if (!textOverride) {
         setUserInput('');
-        setMood("thinking");
     }
     
+    setMood("thinking");
     setIsLoading(true);
 
     try {
@@ -39,13 +39,22 @@ function App() {
 
       const data = await response.json();
       
-      const displayMessage = textOverride ? (imageSrc ? "👋 (Wave)" : "👋 (Wave)") : textToSend;
+      const displayMessage = textOverride 
+        ? (textOverride.includes("waves") ? "👋 (Wave)" : `✋ (${textToSend.match(/\d+/) || 'Gesture'})`)
+        : textToSend;
+        
       setChatHistory(prev => [...prev, { user: displayMessage, ai: data.response }]);
       
-      speak(data.response);
+      if (data.response) {
+        speak(data.response);
+      } else {
+        console.warn("Received empty response from backend");
+        setMood("idle");
+      }
     } catch (error) {
       console.error("Error connecting to backend:", error);
-      setChatHistory(prev => [...prev, { user: textToSend, ai: "Error: Could not connect to Blue." }]);
+      const errorMessage = error.name === 'AbortError' ? "Blue is taking too long to think..." : "Error: Could not connect to Blue.";
+      setChatHistory(prev => [...prev, { user: displayMessage, ai: errorMessage }]);
       setMood("idle");
     } finally {
       setIsLoading(false);
@@ -58,7 +67,14 @@ function App() {
     sendMessage("[User waves at you!]", "excited", imageSrc);
   };
 
+  const handleNumberDetected = (count, imageSrc) => {
+    if (mood === "excited" || isLoading) return;
+    setMood("excited");
+    sendMessage(`[User is holding up the number ${count} with their fingers!]`, "excited", imageSrc);
+  };
+
   const speak = (text) => {
+    if (!text) return;
     window.speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.pitch = 1.5;
@@ -69,7 +85,10 @@ function App() {
     };
     
     utterance.onend = () => setMood("idle");
-    utterance.onerror = () => setMood("idle");
+    utterance.onerror = (e) => {
+        console.error("SpeechSynthesis error:", e);
+        setMood("idle");
+    };
     window.speechSynthesis.speak(utterance);
   };
 
@@ -91,7 +110,11 @@ function App() {
       
       <Eyes mood={mood} />
       
-      <GestureManager onWave={handleWave} visible={showCamera} />
+      <GestureManager 
+        onWave={handleWave} 
+        onNumberDetected={handleNumberDetected} 
+        visible={showCamera} 
+      />
       
       <div className="chat-container">
         {chatHistory.map((msg, index) => (
